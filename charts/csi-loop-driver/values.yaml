@@ -1,0 +1,10 @@
+image:
+  repository: ghcr.io/marxus/k8s-loop-volume
+  tag: v0.0.0-develop
+  pullPolicy: IfNotPresent
+
+# Node selector for driver deployment
+nodeSelector: {}
+
+# Tolerations for driver pods
+tolerations: []

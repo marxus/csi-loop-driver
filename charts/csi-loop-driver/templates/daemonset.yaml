@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: csi-loop-driver
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-loop-driver
+  template:
+    metadata:
+      labels:
+        app: csi-loop-driver
+    spec:
+      serviceAccountName: csi-loop-driver
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: csi-loop-driver
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - "--endpoint=unix:///csi/csi.sock"
+          - "--nodeid=$(NODE_ID)"
+          - "--v=5"
+        env:
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: kubelet-dir
+          mountPath: /var/lib/kubelet/pods
+          mountPropagation: Bidirectional
+        - name: csi-loop-dir
+          mountPath: /var/lib/csi-loop
+        - name: dev
+          mountPath: /dev
+
+      - name: node-driver-registrar
+        image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.10.0
+        args:
+          - "--csi-address=/csi/csi.sock"
+          - "--kubelet-registration-path=/var/lib/kubelet/plugins/loop.csi.k8s.io/csi.sock"
+          - "--v=5"
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: registration-dir
+          mountPath: /registration
+
+      volumes:
+      - name: socket-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins/loop.csi.k8s.io
+          type: DirectoryOrCreate
+      - name: registration-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+          type: Directory
+      - name: kubelet-dir
+        hostPath:
+          path: /var/lib/kubelet/pods
+          type: Directory
+      - name: csi-loop-dir
+        hostPath:
+          path: /var/lib/csi-loop
+          type: DirectoryOrCreate
+      - name: dev
+        hostPath:
+          path: /dev
+          type: Directory
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
