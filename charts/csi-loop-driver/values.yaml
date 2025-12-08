@@ -1,7 +1,6 @@
 image:
-  repository: ghcr.io/marxus/k8s-loop-volume
-  tag: v0.0.0-develop
-  pullPolicy: IfNotPresent
+  repository: ghcr.io/marxus/csi-loop-driver
+  tag: latest
 
 # Node selector for driver deployment
 nodeSelector: {}

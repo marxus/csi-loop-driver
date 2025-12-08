@@ -8,7 +8,6 @@ import (
 )
 
 type IdentityServer struct {
-	driver *Driver
 }
 
 // GetPluginInfo returns metadata about the plugin
@@ -25,16 +24,9 @@ func (ids *IdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPlugin
 func (ids *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	klog.V(5).Infof("GetPluginCapabilities called")
 
+	// No capabilities needed for ephemeral inline volumes
 	return &csi.GetPluginCapabilitiesResponse{
-		Capabilities: []*csi.PluginCapability{
-			{
-				Type: &csi.PluginCapability_Service_{
-					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
-					},
-				},
-			},
-		},
+		Capabilities: []*csi.PluginCapability{},
 	}, nil
 }
 

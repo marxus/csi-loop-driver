@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-btrfs-volume2
+spec:
+  containers:
+  - name: test
+    image: alpine:3.22
+    command: ["/bin/sh"]
+    args:
+      - "-c"
+      - |
+        echo "=== Testing btrfs Volume ==="
+        df -h /data
+        mount | grep /data
+        echo "Writing test file..."
+        echo "Hello from btrfs loop volume!" > /data/test.txt
+        cat /data/test.txt
+        echo "Success! Volume is working."
+        sleep infinity
+    volumeMounts:
+    - name: btrfs-volume
+      mountPath: /data
+  volumes:
+  - name: btrfs-volume
+    csi:
+      driver: loop.csi.k8s.io
+      volumeAttributes:
+        size: 1Gi

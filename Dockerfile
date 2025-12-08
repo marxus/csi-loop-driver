@@ -18,10 +18,5 @@ FROM ${BUILDSTAGE} AS binary
 FROM alpine:3.22
 WORKDIR /app
 COPY --from=binary /app/csi-loop-driver ./csi-loop-driver
-
-# Install XFS tools and mount utilities
-RUN apk add --no-cache \
-    xfsprogs \
-    util-linux
-
+RUN apk add --no-cache util-linux btrfs-progs
 ENTRYPOINT ["./csi-loop-driver"]

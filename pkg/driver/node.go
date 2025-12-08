@@ -3,16 +3,17 @@ package driver
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/marxus/csi-loop-driver/conf"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 )
 
-// NodeServer implements the CSI Node service
+const backingFileDir = "/var/lib/csi-loop"
+
 type NodeServer struct {
-	driver *Driver
 	nodeID string
 }
 
@@ -27,30 +28,35 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	klog.Infof("NodePublishVolume: volumeID=%s, targetPath=%s, size=%s", volumeID, targetPath, size)
 
 	// Step 1: Create backing file
-	backingFile := fmt.Sprintf("/var/lib/csi-loop/%s.img", volumeID)
+	backingFile := fmt.Sprintf("%s/%s.img", backingFileDir, volumeID)
 	klog.Infof("Creating backing file: %s", backingFile)
 
-	// Make sure directory exists
-	os.MkdirAll("/var/lib/csi-loop", 0755)
+	// Parse Kubernetes quantity format (1Gi, 500Mi) to bytes
+	quantity, err := resource.ParseQuantity(size)
+	if err != nil {
+		return nil, fmt.Errorf("invalid size format %s: %v", size, err)
+	}
+	sizeBytes := quantity.Value()
+	klog.Infof("Parsed size: %s -> %d bytes", size, sizeBytes)
 
 	// Create the file with truncate
-	cmd := exec.Command("truncate", "-s", size, backingFile)
+	cmd := exec.Command("truncate", "-s", fmt.Sprintf("%d", sizeBytes), conf.RealPath(backingFile))
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("failed to create backing file: %v", err)
 	}
 
-	// Step 2: Format with mkfs.xfs
-	klog.Infof("Formatting with mkfs.xfs")
-	cmd = exec.Command("mkfs.xfs", backingFile)
+	// Step 2: Format with mkfs.btrfs
+	klog.Infof("Formatting with mkfs.btrfs")
+	cmd = exec.Command("mkfs.btrfs", conf.RealPath(backingFile))
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("failed to format: %v", err)
 	}
 
 	// Step 3: Mount with loop
 	klog.Infof("Mounting to %s", targetPath)
-	os.MkdirAll(targetPath, 0755)
+	conf.FS.MkdirAll(targetPath, 0755)
 
-	cmd = exec.Command("mount", "-o", "loop", backingFile, targetPath)
+	cmd = exec.Command("mount", "-o", "loop", conf.RealPath(backingFile), conf.RealPath(targetPath))
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("failed to mount: %v", err)
 	}
@@ -67,17 +73,17 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	klog.Infof("NodeUnpublishVolume: volumeID=%s, targetPath=%s", volumeID, targetPath)
 
 	// Step 1: Unmount
-	cmd := exec.Command("umount", targetPath)
+	cmd := exec.Command("umount", conf.RealPath(targetPath))
 	if err := cmd.Run(); err != nil {
 		klog.Warningf("Failed to unmount (may not be mounted): %v", err)
 	}
 
 	// Step 2: Remove backing file
-	backingFile := fmt.Sprintf("/var/lib/csi-loop/%s.img", volumeID)
-	os.Remove(backingFile)
+	backingFile := fmt.Sprintf("%s/%s.img", backingFileDir, volumeID)
+	conf.FS.Remove(backingFile)
 
 	// Step 3: Remove mount directory
-	os.Remove(targetPath)
+	conf.FS.Remove(targetPath)
 
 	klog.Infof("Volume %s successfully unpublished", volumeID)
 	return &csi.NodeUnpublishVolumeResponse{}, nil
