@@ -18,7 +18,7 @@ jobs:
         run: |
           go mod download
           for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOARCH="$arch" go build -o "csi-loop-driver-$arch" cmd/csi-loop-driver/main.go
+            CGO_ENABLED=0 GOARCH="$arch" go build -tags release -o "csi-loop-driver-$arch" cmd/csi-loop-driver/main.go
           done
 
       - name: Set up QEMU

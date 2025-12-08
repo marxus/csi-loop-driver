@@ -93,10 +93,10 @@ func parseEndpoint(endpoint string) (string, string)
 
 ```bash
 # View package documentation
-go doc github.com/k8s-loop-volume/csi-loop-driver/pkg/driver
+go doc github.com/marxus/csi-loop-driver/pkg/driver
 
 # View specific symbol
-go doc github.com/k8s-loop-volume/csi-loop-driver/pkg/driver.NodeServer
+go doc github.com/marxus/csi-loop-driver/pkg/driver.NodeServer
 
 # Format code including comments
 gofmt -w .
