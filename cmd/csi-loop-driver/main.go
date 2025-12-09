@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/marxus/csi-loop-driver/pkg/driver"
+	"github.com/marxus/csi-loop-driver/pkg/serve"
 	"k8s.io/klog/v2"
 )
 
 func main() {
 	klog.InitFlags(nil)
 
-	if err := driver.RunDriver(); err != nil {
+	if err := serve.StartDriver(); err != nil {
 		klog.Fatalf("Failed to run driver: %v", err)
 	}
 }
